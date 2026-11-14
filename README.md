@@ -416,4 +416,86 @@ The snapshot returned by `/api/mesh` reports both `mstCost` (Prim) and `kruskalC
 Every call to `MeshService.Topology()` repeats this pipeline over the surviving nodes:
 
 1. `Bfs(gateway, IsUp)` finds who can still reach the gateway.
-2.
+2. `Prim(gateway, IsUp)` recomputes the power-optimal routing tree.
+3. `Prim(gateway, _ => true)` computes the healthy-network baseline.
+4. `Kruskal(...)` independently confirms the cost.
+5. Any node whose baseline route passed through a failed node is reported as **rerouted**, with its old and new route and cost. A node with no route left is reported as **isolated**.
+
+Because nothing is cached, the network heals the instant a node fails or recovers.
+
+---
+
+## The demo network
+
+The seeded network has one gateway, the twelve seeded devices and 22 links.
+
+| MAC suffix | Device | MAC suffix | Device |
+|---|---|---|---|
+| `…:01` | Moisture Sensor A | `…:07` | Smart Meter 2 |
+| `…:02` | Moisture Sensor B | `…:08` | Solar Inverter Meter |
+| `…:03` | Temperature Node C | `…:09` | Pump A |
+| `…:04` | Humidity Node D | `…:0A` | Pump B |
+| `…:05` | pH Probe E | `…:0B` | Valve V1 |
+| `…:06` | Smart Meter 1 | `…:0C` | Smart Relay R1 |
+
+(Full MAC: `AA:BB:CC:00:00:` followed by the suffix.)
+
+**Healthy network:** the minimum spanning tree has 12 links and a total cost of **44**. Pump A routes Pump A → Moisture Sensor B → Moisture Sensor A → Valve V1 → Gateway (4 hops, cost 14).
+
+**Fail Smart Meter 1** (`…:06`): the tree cost rises to **47** and three devices reroute.
+
+| Device | Before | After |
+|---|---|---|
+| Smart Meter 2 | via Smart Meter 1 (cost 6) | via Solar Inverter and Relay R1 (cost 16) |
+| Solar Inverter Meter | via Smart Meter 2 and Smart Meter 1 (cost 10) | via Relay R1 (cost 12) |
+| Smart Relay R1 | via Smart Meter 1 (cost 6) | direct to the gateway (cost 6) |
+
+Recover the node and every route returns to the baseline.
+
+The demo network is defined in `Services/MeshSeed.cs`. Six hours of mock history (one reading a minute for every sensor) is generated at start-up in `Services/SeedData.cs` so the range queries have real data to search.
+
+---
+
+## Testing
+
+```bash
+dotnet test
+```
+
+The suite contains over 100 automated tests:
+
+| Area | What is checked |
+|---|---|
+| AVL tree | Stays balanced under ascending inserts, range results match a brute-force scan, removal, upsert, latest-k, in-order traversal, subtree pruning. |
+| Graph | BFS reachability and hop counts, BFS around failed nodes, Prim and Kruskal agree, disconnected graphs, validation of bad input. |
+| Mesh service | The 44-cost spanning tree, every single-node failure, rerouting, isolated nodes, recovery, route tracing by MAC and by name. |
+| Queues and structures | FIFO order, critical-packet bypass, undo stack, duplicate-alert suppression, dictionary lookups, ordered history. |
+| Prediction | Learned suggestions, confidence thresholds, trend detection. |
+| API (end to end) | Real HTTP calls: telemetry, commands, mesh, failure simulation and range queries. |
+
+---
+
+## Troubleshooting
+
+| Problem | Fix |
+|---|---|
+| `dotnet` is not recognised | Install the .NET 10 SDK and restart the terminal. |
+| Page does not load | Use the exact address printed in the console, or choose a port with `--urls`. |
+| Port already in use | Run with `--urls http://localhost:5055`. |
+| Every device shows Offline | The simulator is stopped. Press **Start simulator** and wait a few seconds. |
+| Range query returns nothing | Seeded history covers only the last six hours. Use times inside that window, or run the simulator to add readings. |
+| Tests fail to compile with `Fact` or `Assert` not found | The test project must contain `<Using Include="Xunit" />`. |
+
+---
+
+## References
+
+Adelson-Velsky, G.M. and Landis, E.M. (1962) 'An algorithm for the organization of information', *Doklady Akademii Nauk SSSR*, 146(2), pp. 263–266.
+
+Cormen, T.H., Leiserson, C.E., Rivest, R.L. and Stein, C. (2022) *Introduction to algorithms*. 4th edn. Cambridge, MA: MIT Press.
+
+Kruskal, J.B. (1956) 'On the shortest spanning subtree of a graph and the traveling salesman problem', *Proceedings of the American Mathematical Society*, 7(1), pp. 48–50.
+
+Microsoft (2025) *PriorityQueue<TElement,TPriority> class*. Available at: https://learn.microsoft.com/dotnet/api/system.collections.generic.priorityqueue-2 (Accessed: 14 November 2026).
+
+Prim, R.C. (1957) 'Shortest connection networks and some generalizations', *Bell System Technical Journal*, 36(6), pp. 1389–1401.
