@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Smart X</title>
+  <style>
+    :root { --bg: #f4f6f9; --card: #fff; --ink: #1c2430; --muted: #5d6b7e; --line: #d9dfe8; --accent: #2f6fed; }
+    @media (prefers-color-scheme: dark) { :root { --bg: #11151c; --card: #1a2029; --ink: #e8ecf2; --muted: #94a1b4; --line: #2c3541; --accent: #6c9bff; } }
+    * { box-sizing: border-box; }
+    body { margin: 0; font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--ink); }
+    main { max-width: 900px; margin: 0 auto; padding: 48px 16px; }
+    h1 { margin: 0 0 4px; }
+    p.lead { color: var(--muted); margin: 0 0 28px; }
+    .menu { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+    a.tile { display: block; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 20px; color: inherit; text-decoration: none; }
+    a.tile:hover, a.tile:focus-visible { border-color: var(--accent); outline: none; }
+    a.tile b { display: block; font-size: 16px; margin-bottom: 4px; }
+    a.tile span { color: var(--muted); font-size: 13px; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Smart X</h1>
+  <p class="lead">Smart irrigation and IoT monitoring: choose a module.</p>
+  <div class="menu">
+  
+    <a class="tile" href="/telemetry.html"><b>Sensor data &amp; telemetry</b><span>Ingest and review readings from the field sensors.</span></a>
+    <a class="tile" href="/commands.html"><b>Command stream &amp; history</b><span>Send commands to devices and review what was sent.</span></a>
+    <a class="tile" href="/topology.html"><b>Network topology &amp; mesh routing</b><span>See the mesh, track routes by MAC address, find failures and browse telemetry history.</span></a>
+  </div>
+</main>
+</body>
+</html>
