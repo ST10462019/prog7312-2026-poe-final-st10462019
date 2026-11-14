@@ -1,0 +1,449 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Smart X – Network Topology</title>
+  <style>
+    :root {
+      --bg: #f4f6f9; --card: #ffffff; --ink: #1c2430; --muted: #5d6b7e; --line: #d9dfe8;
+      --ok: #178f62; --down: #d3433b; --iso: #c98a12; --mst: #2f6fed; --route: #8a3ffc;
+      --radius: 12px;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #11151c; --card: #1a2029; --ink: #e8ecf2; --muted: #94a1b4; --line: #2c3541;
+        --ok: #35c28b; --down: #ef6b63; --iso: #e6ad3c; --mst: #6c9bff; --route: #b58cff;
+      }
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--ink); }
+    header { background: var(--card); border-bottom: 1px solid var(--line); padding: 0 16px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 24px; }
+    header .brand { font-weight: 700; font-size: 16px; padding: 14px 0; }
+    nav { display: flex; flex-wrap: wrap; gap: 4px; }
+    nav a { color: var(--muted); text-decoration: none; padding: 16px 12px 13px; border-bottom: 3px solid transparent; }
+    nav a:hover { color: var(--ink); }
+    nav a.active { color: var(--ink); border-bottom-color: var(--mst); font-weight: 600; }
+    main { max-width: 1280px; margin: 0 auto; padding: 16px; display: grid; gap: 16px; }
+    .chips { display: flex; flex-wrap: wrap; gap: 10px; }
+    .chip { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 10px 16px; min-width: 120px; }
+    .chip b { display: block; font-size: 22px; line-height: 1.2; }
+    .chip span { color: var(--muted); font-size: 12px; }
+    .grid { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+    @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; }
+    .card h2 { margin: 0 0 10px; font-size: 15px; }
+    .stack { display: grid; gap: 16px; }
+    .muted { color: var(--muted); }
+    .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    input, select, button { font: inherit; color: inherit; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; }
+    input[type="text"] { flex: 1 1 180px; min-width: 0; }
+    button { cursor: pointer; background: var(--mst); color: #fff; border-color: transparent; font-weight: 600; }
+    button.secondary { background: var(--bg); color: var(--ink); border-color: var(--line); font-weight: 500; }
+    button.danger { background: var(--down); }
+    button:disabled { opacity: .5; cursor: not-allowed; }
+    .legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 10px; font-size: 12px; color: var(--muted); }
+    .legend i { display: inline-block; width: 12px; height: 12px; border-radius: 50%; vertical-align: -2px; margin-right: 5px; }
+    .legend i.line { width: 20px; height: 4px; border-radius: 2px; vertical-align: 2px; }
+    svg#mesh { width: 100%; height: auto; display: block; }
+    .link { stroke: var(--line); stroke-width: 1.5; }
+    .link.mst { stroke: var(--mst); stroke-width: 3.5; }
+    .link.inactive { stroke: var(--down); stroke-width: 1.5; stroke-dasharray: 4 4; opacity: .55; }
+    .link.route { stroke: var(--route); stroke-width: 6; opacity: .9; }
+    .cost { font-size: 10px; fill: var(--muted); paint-order: stroke; stroke: var(--card); stroke-width: 3px; }
+    .node { cursor: pointer; }
+    .node circle.body { stroke: var(--card); stroke-width: 3; }
+    .node.online circle.body { fill: var(--ok); }
+    .node.offline circle.body { fill: var(--down); }
+    .node.isolated circle.body { fill: var(--iso); }
+    .node.gateway circle.body { fill: var(--ink); }
+    .node text { font-size: 10px; font-weight: 700; fill: #fff; text-anchor: middle; pointer-events: none; }
+    .node.gateway text { fill: var(--card); }
+    .node circle.halo { fill: none; stroke: var(--route); stroke-width: 3; display: none; }
+    .node.selected circle.halo { display: block; }
+    .path { margin: 6px 0; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; }
+    .path b { font-size: 12px; text-transform: uppercase; letter-spacing: .03em; color: var(--muted); display: block; }
+    .path code { font-size: 13px; word-break: break-word; }
+    .path.main { border-color: var(--mst); }
+    .note { padding: 8px 10px; border-radius: 8px; background: var(--bg); margin: 8px 0; }
+    .err { color: var(--down); }
+    .pill { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; color: #fff; }
+    .pill.online { background: var(--ok); } .pill.offline { background: var(--down); } .pill.isolated { background: var(--iso); }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+    th { position: sticky; top: 0; background: var(--card); font-size: 12px; color: var(--muted); text-transform: uppercase; }
+    .scroll { max-height: 320px; overflow: auto; border: 1px solid var(--line); border-radius: 8px; }
+    .fail { border-left: 4px solid var(--down); padding: 4px 0 4px 10px; margin: 10px 0; }
+    .fail ul { margin: 6px 0 0; padding-left: 18px; }
+    label.field { display: grid; gap: 3px; font-size: 12px; color: var(--muted); }
+  </style>
+</head>
+<body>
+<header>
+  <div class="brand">Smart X</div>
+  <nav>
+   
+    <a href="/telemetry.html">Sensor data &amp; telemetry</a>
+    <a href="/commands.html">Command stream &amp; history</a>
+    <a href="/topology.html" class="active">Network topology &amp; mesh routing</a>
+  </nav>
+</header>
+
+<main>
+  <div class="chips" id="chips" aria-live="polite"></div>
+
+  <div class="grid">
+    <section class="card">
+      <h2>Mesh network</h2>
+      <svg id="mesh" viewBox="0 0 760 540" role="img" aria-label="Mesh network diagram"></svg>
+      <div class="legend">
+        <span><i style="background:var(--ink)"></i>Gateway</span>
+        <span><i style="background:var(--ok)"></i>Online</span>
+        <span><i style="background:var(--down)"></i>Offline</span>
+        <span><i style="background:var(--iso)"></i>Cut off</span>
+        <span><i class="line" style="background:var(--mst)"></i>MST link (power-optimal)</span>
+        <span><i class="line" style="background:var(--route)"></i>Tracked route</span>
+      </div>
+      <p class="muted" style="margin:8px 0 0">Click a node to track its route. Numbers on blue links are relative transmit-energy costs.</p>
+    </section>
+
+    <div class="stack">
+      <section class="card">
+        <h2>Track a node</h2>
+        <form class="row" id="trackForm">
+          <input type="text" id="trackInput" list="nodeList" placeholder="Identifier or MAC, e.g. N-04 or 24:6F:28:A1:00:04" autocomplete="off" aria-label="Node identifier or MAC address">
+          <datalist id="nodeList"></datalist>
+          <button type="submit">Track route</button>
+        </form>
+        <div id="routeOut" class="muted" style="margin-top:10px">Pick a node to see how its data reaches the gateway.</div>
+        <div class="row" style="margin-top:10px">
+          <button type="button" id="toggleBtn" class="danger" disabled>Simulate failure</button>
+          <span class="muted" id="toggleHint">Select a node first.</span>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Failures and re-routing</h2>
+        <div id="failOut" class="muted">All nodes are online.</div>
+      </section>
+
+      <section class="card">
+        <h2>Connected devices (BFS)</h2>
+        <div class="row">
+          <label class="field">Subnet
+            <select id="subnetSel"><option value="">All subnets</option></select>
+          </label>
+          <label class="field">Search from
+            <select id="fromSel"></select>
+          </label>
+        </div>
+        <div id="reachOut" style="margin-top:10px"></div>
+      </section>
+    </div>
+  </div>
+
+  <section class="card">
+    <h2>Historical telemetry log <span class="muted" id="histTitle"></span></h2>
+    <form class="row" id="histForm">
+      <label class="field">Metric
+        <select id="metricSel">
+          <option value="">All metrics</option>
+          <option value="moisture">Moisture</option>
+          <option value="temperature">Temperature</option>
+        </select>
+      </label>
+      <label class="field">From<input type="datetime-local" id="fromInput" required></label>
+      <label class="field">To<input type="datetime-local" id="toInput" required></label>
+      <button type="submit" id="histBtn" disabled>Query</button>
+      <span class="row" role="group" aria-label="Quick ranges">
+        <button type="button" class="secondary" data-hours="2">2 h</button>
+        <button type="button" class="secondary" data-hours="6">6 h</button>
+        <button type="button" class="secondary" data-hours="24">24 h</button>
+        <button type="button" class="secondary" data-hours="0">All</button>
+      </span>
+    </form>
+    <p class="muted" id="histStats" style="margin:10px 0">Select a node to load its history.</p>
+    <div class="scroll" id="histWrap" hidden>
+      <table>
+        <thead><tr><th>Time</th><th>Metric</th><th>Value</th><th>Unit</th></tr></thead>
+        <tbody id="histBody"></tbody>
+      </table>
+    </div>
+  </section>
+</main>
+
+<script>
+(() => {
+  'use strict';
+
+  const NS = 'http://www.w3.org/2000/svg';
+  const CX = 380, CY = 270, RADIUS = 225, NODE_R = 19;
+  const state = { topo: null, selected: null, route: null, latest: null, earliest: null };
+  const $ = (id) => document.getElementById(id);
+
+  function el(tag, props = {}, ...kids) {
+    const node = document.createElement(tag);
+    for (const [k, v] of Object.entries(props)) {
+      if (k === 'class') node.className = v;
+      else if (k === 'text') node.textContent = v;
+      else node.setAttribute(k, v);
+    }
+    for (const kid of kids.flat()) if (kid !== null && kid !== undefined) node.append(kid);
+    return node;
+  }
+  function svg(tag, attrs = {}, ...kids) {
+    const node = document.createElementNS(NS, tag);
+    for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, v);
+    for (const kid of kids.flat()) if (kid !== null && kid !== undefined) node.append(kid);
+    return node;
+  }
+  async function api(path, options) {
+    const res = await fetch(path, options);
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(body.error || `Request failed (${res.status})`);
+    return body;
+  }
+  const nodeById = (id) => state.topo.nodes.find((n) => n.id === id);
+  const displayState = (n) => n.isGateway ? 'gateway' : n.status === 'Offline' ? 'offline' : n.reachable ? 'online' : 'isolated';
+
+  async function loadTopology() {
+    state.topo = await api('/api/topology');
+    renderChips();
+    renderGraph();
+    renderNodeInputs();
+    await Promise.all([loadFailures(), loadReach()]);
+    updateToggle();
+  }
+
+  function renderChips() {
+    const s = state.topo.summary;
+    const chip = (value, label) => el('div', { class: 'chip' }, el('b', { text: String(value) }), el('span', { text: label }));
+    $('chips').replaceChildren(
+      chip(s.total, 'Nodes in mesh'), chip(s.online, 'Online'), chip(s.offline, 'Offline'),
+      chip(s.isolated, 'Online but cut off'), chip(s.mstCost, `MST cost (${s.mstEdges} links)`));
+  }
+
+  function layout(nodes) {
+    const byDepth = new Map();
+    for (const n of nodes) {
+      if (!byDepth.has(n.layoutDepth)) byDepth.set(n.layoutDepth, []);
+      byDepth.get(n.layoutDepth).push(n);
+    }
+    const maxDepth = Math.max(1, ...byDepth.keys());
+    const pos = {};
+    for (const [depth, list] of byDepth) {
+      if (depth === 0) { list.forEach((n) => { pos[n.id] = { x: CX, y: CY }; }); continue; }
+      list.sort((a, b) => a.id.localeCompare(b.id));
+      const r = (RADIUS / maxDepth) * depth;
+      list.forEach((n, i) => {
+        const angle = (2 * Math.PI * i) / list.length - Math.PI / 2 + depth * 0.45;
+        pos[n.id] = { x: CX + r * Math.cos(angle), y: CY + r * Math.sin(angle) };
+      });
+    }
+    return pos;
+  }
+
+  function renderGraph() {
+    const { nodes, links } = state.topo;
+    const pos = layout(nodes);
+    const routePairs = new Set();
+    const hops = state.route && (state.route.mstRoute || state.route.cheapestRoute || state.route.lastKnownRoute);
+    if (hops) for (let i = 0; i < hops.hops.length - 1; i++) routePairs.add([hops.hops[i], hops.hops[i + 1]].sort().join('|'));
+
+    const root = $('mesh');
+    root.replaceChildren();
+
+    for (const l of links) {
+      const a = pos[l.from], b = pos[l.to];
+      const key = [l.from, l.to].sort().join('|');
+      const cls = ['link', l.inMst ? 'mst' : '', !l.active ? 'inactive' : '', routePairs.has(key) ? 'route' : ''].join(' ');
+      root.append(svg('line', { class: cls, x1: a.x, y1: a.y, x2: b.x, y2: b.y }, svg('title', {}, `${l.from} ↔ ${l.to}, cost ${l.cost}`)));
+    }
+    for (const l of links.filter((x) => x.inMst)) {
+      const a = pos[l.from], b = pos[l.to];
+      const label = svg('text', { class: 'cost', x: (a.x + b.x) / 2, y: (b.y + a.y) / 2 + 3, 'text-anchor': 'middle' });
+      label.textContent = String(l.cost);
+      root.append(label);
+    }
+    for (const n of nodes) {
+      const p = pos[n.id];
+      const cls = ['node', displayState(n), n.id === state.selected ? 'selected' : ''].join(' ');
+      const g = svg('g', { class: cls, transform: `translate(${p.x} ${p.y})`, tabindex: '0', role: 'button', 'aria-label': `${n.name}, ${n.status}` },
+        svg('title', {}, `${n.name} · ${n.mac} · ${n.subnet}`),
+        svg('circle', { class: 'halo', r: NODE_R + 6 }),
+        svg('circle', { class: 'body', r: NODE_R }));
+      const text = svg('text', { y: 3.5 });
+      text.textContent = n.id;
+      g.append(text);
+      g.addEventListener('click', () => trackNode(n.id));
+      g.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); trackNode(n.id); } });
+      root.append(g);
+    }
+  }
+
+  function renderNodeInputs() {
+    const nodes = state.topo.nodes;
+    $('nodeList').replaceChildren(...nodes.flatMap((n) => [el('option', { value: n.id, label: n.name }), el('option', { value: n.mac, label: n.name })]));
+
+    const subnets = [...new Set(nodes.map((n) => n.subnet))].sort();
+    const subnetSel = $('subnetSel'), current = subnetSel.value;
+    subnetSel.replaceChildren(el('option', { value: '', text: 'All subnets' }), ...subnets.map((s) => el('option', { value: s, text: s })));
+    subnetSel.value = subnets.includes(current) ? current : '';
+
+    const fromSel = $('fromSel'), prev = fromSel.value;
+    fromSel.replaceChildren(...nodes.filter((n) => n.status === 'Online').map((n) => el('option', { value: n.id, text: n.isGateway ? `${n.id} (gateway)` : n.id })));
+    fromSel.value = [...fromSel.options].some((o) => o.value === prev) ? prev : state.topo.gateway;
+  }
+
+  function pathRow(label, view, main) {
+    return el('div', { class: main ? 'path main' : 'path' },
+      el('b', { text: label }),
+      el('code', { text: view.hops.join(' → ') }),
+      el('div', { class: 'muted', text: `${view.hopCount} hop(s) · energy cost ${view.totalCost}` }));
+  }
+
+  async function trackNode(idOrMac) {
+    const out = $('routeOut');
+    try {
+      const route = await api(`/api/topology/nodes/${encodeURIComponent(idOrMac.trim())}/route`);
+      const changed = state.selected !== route.id;
+      state.selected = route.id;
+      state.route = route;
+      $('trackInput').value = route.id;
+
+      const status = route.status === 'Offline' ? 'offline' : route.reachable ? 'online' : 'isolated';
+      const label = route.status === 'Offline' ? 'Offline' : route.reachable ? 'Online' : 'Cut off';
+      out.className = '';
+      out.replaceChildren(
+        el('div', {}, el('b', { text: `${route.name} ` }), el('span', { class: `pill ${status}`, text: label }), el('div', { class: 'muted', text: route.mac })),
+        route.mstRoute ? pathRow('Power-optimal route (MST)', route.mstRoute, true) : null,
+        route.cheapestRoute && route.mstRoute && route.cheapestRoute.totalCost < route.mstRoute.totalCost ? pathRow('Cheapest single route (Dijkstra)', route.cheapestRoute) : null,
+        route.fewestHopsRoute ? pathRow('Fewest hops (BFS)', route.fewestHopsRoute) : null,
+        route.lastKnownRoute ? pathRow('Last known route', route.lastKnownRoute) : null,
+        el('div', { class: 'note', text: route.message }));
+
+      renderGraph();
+      updateToggle();
+      if (changed) await loadHistoryDefaults();
+    } catch (err) {
+      out.className = 'err';
+      out.textContent = err.message;
+    }
+  }
+
+  function updateToggle() {
+    const btn = $('toggleBtn'), hint = $('toggleHint');
+    const n = state.selected && state.topo ? nodeById(state.selected) : null;
+    if (!n) { btn.disabled = true; hint.textContent = 'Select a node first.'; return; }
+    if (n.isGateway) { btn.disabled = true; hint.textContent = 'The gateway cannot be taken offline.'; return; }
+    btn.disabled = false;
+    const down = n.status === 'Offline';
+    btn.textContent = down ? `Restore ${n.id}` : `Simulate failure of ${n.id}`;
+    btn.className = down ? '' : 'danger';
+    hint.textContent = down ? 'Bring the node back online.' : 'Takes the node offline and lets the mesh heal.';
+  }
+
+  async function toggleSelected() {
+    const n = nodeById(state.selected);
+    if (!n) return;
+    const next = n.status === 'Offline' ? 'Online' : 'Offline';
+    try {
+      await api(`/api/topology/nodes/${encodeURIComponent(n.id)}/status`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: next })
+      });
+      await loadTopology();
+      await trackNode(n.id);
+    } catch (err) { $('toggleHint').textContent = err.message; }
+  }
+
+  async function loadFailures() {
+    const report = await api('/api/topology/failures');
+    const out = $('failOut');
+    if (report.failures.length === 0 && report.isolated.length === 0) {
+      out.className = 'muted'; out.textContent = 'All nodes are online and every route is intact.'; return;
+    }
+    out.className = '';
+    out.replaceChildren(
+      ...report.failures.map((f) => el('div', { class: 'fail' },
+        el('b', { text: `${f.name} (${f.id}) is down` }),
+        el('div', { text: f.advice }),
+        f.affected.length ? el('ul', {}, ...f.affected.map((a) => el('li', {
+          text: a.isolated
+            ? `${a.id}: cut off – no path to the gateway remains.`
+            : `${a.id}: now hops to ${a.nextHop}, route ${a.newRoute.join(' → ')} (cost ${Number(a.newCost).toFixed(1)}).`
+        }))) : null)),
+      report.isolated.length ? el('div', { class: 'note', text: `Online but cut off: ${report.isolated.map((n) => n.id).join(', ')}` }) : null);
+  }
+
+  async function loadReach() {
+    const subnet = $('subnetSel').value, from = $('fromSel').value;
+    const qs = new URLSearchParams();
+    if (subnet) qs.set('subnet', subnet);
+    if (from) qs.set('from', from);
+    const data = await api(`/api/topology/reachable?${qs}`);
+    const rows = data.reachable.map((n) => el('tr', {}, el('td', { text: n.id }), el('td', { text: n.mac }), el('td', { text: n.subnet }), el('td', { text: String(n.hops) })));
+    $('reachOut').replaceChildren(
+      el('div', { class: 'muted', text: `${data.reachable.length} reachable from ${data.from}${data.subnet ? ` in ${data.subnet}` : ''}` }),
+      el('div', { class: 'scroll', style: 'max-height:200px;margin-top:6px' },
+        el('table', {}, el('thead', {}, el('tr', {}, ...['Node', 'MAC', 'Subnet', 'Hops'].map((h) => el('th', { text: h })))), el('tbody', {}, ...rows))),
+      data.unreachable.length
+        ? el('div', { class: 'note err', text: `Not reachable: ${data.unreachable.map((n) => `${n.id}${n.status === 'Offline' ? ' (down)' : ' (cut off)'}`).join(', ')}` })
+        : null);
+  }
+
+  
+  const pad = (n) => String(n).padStart(2, '0');
+  const toLocalInput = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+
+  async function loadHistoryDefaults() {
+    $('histTitle').textContent = `– ${state.selected}`;
+    $('histBtn').disabled = false;
+    const sum = await api(`/api/telemetry/${encodeURIComponent(state.selected)}/summary`);
+    if (!sum.count) { state.earliest = state.latest = null; $('histStats').textContent = 'No telemetry has been stored for this sensor yet.'; $('histWrap').hidden = true; return; }
+    state.earliest = new Date(sum.earliest); state.latest = new Date(sum.latest);
+    setRange(2);
+    await queryHistory();
+  }
+
+  function setRange(hours) {
+    if (!state.latest) return;
+    const to = new Date(state.latest.getTime() + 60000);
+    const from = hours === 0 ? state.earliest : new Date(to.getTime() - hours * 3600000);
+    $('fromInput').value = toLocalInput(from);
+    $('toInput').value = toLocalInput(to);
+  }
+
+  async function queryHistory() {
+    if (!state.selected) return;
+    const qs = new URLSearchParams({
+      from: new Date($('fromInput').value).toISOString(),
+      to: new Date($('toInput').value).toISOString(),
+      limit: '500'
+    });
+    if ($('metricSel').value) qs.set('metric', $('metricSel').value);
+    try {
+      const r = await api(`/api/telemetry/${encodeURIComponent(state.selected)}?${qs}`);
+      const shown = r.readings.length;
+      $('histStats').textContent =
+        `${r.totalMatches} matching reading(s)${shown < r.totalMatches ? `, showing the latest ${shown}` : ''} out of ${r.totalStored} stored · ` +
+        `balanced tree height ${r.treeHeight} · answered in ${r.elapsedMs.toFixed(2)} ms`;
+      const rows = [...r.readings].reverse().map((x) => el('tr', {},
+        el('td', { text: new Date(x.timestamp).toLocaleString() }), el('td', { text: x.metric }),
+        el('td', { text: x.value.toFixed(1) }), el('td', { text: x.unit })));
+      $('histBody').replaceChildren(...rows);
+      $('histWrap').hidden = rows.length === 0;
+    } catch (err) { $('histStats').textContent = err.message; $('histWrap').hidden = true; }
+  }
+
+  $('trackForm').addEventListener('submit', (e) => { e.preventDefault(); if ($('trackInput').value.trim()) trackNode($('trackInput').value); });
+  $('toggleBtn').addEventListener('click', toggleSelected);
+  $('subnetSel').addEventListener('change', loadReach);
+  $('fromSel').addEventListener('change', loadReach);
+  $('histForm').addEventListener('submit', (e) => { e.preventDefault(); queryHistory(); });
+  $('histForm').querySelectorAll('[data-hours]').forEach((b) => b.addEventListener('click', () => { setRange(Number(b.dataset.hours)); queryHistory(); }));
+
+  loadTopology().catch((err) => { $('chips').textContent = `Could not load the topology: ${err.message}`; });
+})();
+</script>
+</body>
+</html>
