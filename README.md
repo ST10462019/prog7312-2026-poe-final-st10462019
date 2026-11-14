@@ -496,6 +496,6 @@ Cormen, T.H., Leiserson, C.E., Rivest, R.L. and Stein, C. (2022) *Introduction t
 
 Kruskal, J.B. (1956) 'On the shortest spanning subtree of a graph and the traveling salesman problem', *Proceedings of the American Mathematical Society*, 7(1), pp. 48–50.
 
-Microsoft (2025) *PriorityQueue<TElement,TPriority> class*. Available at: https://learn.microsoft.com/dotnet/api/system.collections.generic.priorityqueue-2 (Accessed: 14 November 2026).
+Microsoft (2025) *PriorityQueue<TElement,TPriority> class*. Available at: https://learn.microsoft.com/dotnet/api/system.collections.generic.priorityqueue-2 (Accessed: 13 November 2026).
 
 Prim, R.C. (1957) 'Shortest connection networks and some generalizations', *Bell System Technical Journal*, 36(6), pp. 1389–1401.
